@@ -1,0 +1,175 @@
+--// SERVICES
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+local camera = workspace.CurrentCamera
+
+--// STATE
+local State = {
+	InfiniteJump = false, Fly = false, Noclip = false, ESP = false,
+	ClickTP = false, Spinbot = false, ClickDelete = false, 
+	Fullbright = false, AutoClick = false, Aimbot = false, KillAura = false,
+	WalkSpeed = 16, FlySpeed = 70, Visible = true, Minimized = false
+}
+local keys = {}
+
+--// GUI CORE (XL SIZE)
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.Name = "BobHubMasterXL"; gui.ResetOnSpawn = false
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(750, 600); main.Position = UDim2.fromScale(0.5, 0.5); main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 15); main.BorderSizePixel = 0; main.ClipsDescendants = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 15)
+
+-- TITLE BAR
+local titleBar = Instance.new("Frame", main)
+titleBar.Size = UDim2.new(1, 0, 0, 60); titleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25); titleBar.BorderSizePixel = 0
+Instance.new("UICorner", titleBar)
+
+local titleText = Instance.new("TextLabel", titleBar)
+titleText.Text = "  BOB HUB MASTER UTILITY"; titleText.Size = UDim2.new(0.7, 0, 1, 0); titleText.BackgroundTransparency = 1
+titleText.TextColor3 = Color3.fromRGB(85, 170, 255); titleText.Font = Enum.Font.GothamBold; titleText.TextSize = 28; titleText.TextXAlignment = Enum.TextXAlignment.Left
+
+-- WINDOW BUTTONS
+local function createWinBtn(text, pos, color, callback)
+	local b = Instance.new("TextButton", titleBar); b.Size = UDim2.fromOffset(40, 40); b.Position = pos
+	b.Text = text; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 22
+	Instance.new("UICorner", b); b.MouseButton1Click:Connect(callback)
+end
+
+createWinBtn("X", UDim2.new(1, -50, 0, 10), Color3.fromRGB(150, 50, 50), function() gui:Destroy() end)
+createWinBtn("-", UDim2.new(1, -100, 0, 10), Color3.fromRGB(60, 60, 60), function()
+	State.Minimized = not State.Minimized
+	main:TweenSize(State.Minimized and UDim2.fromOffset(750, 60) or UDim2.fromOffset(750, 600), "Out", "Quad", 0.3, true)
+end)
+
+-- CONTENT FRAME
+local contentFrame = Instance.new("Frame", main)
+contentFrame.Size = UDim2.new(1, 0, 1, -60); contentFrame.Position = UDim2.fromOffset(0, 60); contentFrame.BackgroundTransparency = 1
+
+-- SIDEBAR (XL)
+local sidebarContainer = Instance.new("Frame", contentFrame)
+sidebarContainer.Size = UDim2.new(0, 220, 1, 0); sidebarContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20); sidebarContainer.BorderSizePixel = 0
+
+local sidebar = Instance.new("ScrollingFrame", sidebarContainer)
+sidebar.Size = UDim2.new(1, 0, 1, -50); sidebar.BackgroundTransparency = 1; sidebar.BorderSizePixel = 0; sidebar.ScrollBarThickness = 0
+Instance.new("UIListLayout", sidebar).Padding = UDim.new(0, 10)
+
+-- SIGNATURE
+local creditLabel = Instance.new("TextLabel", sidebarContainer)
+creditLabel.Text = "Made by: Hirad Hosseinpour"; creditLabel.Size = UDim2.new(1, 0, 0, 40); creditLabel.Position = UDim2.new(0, 0, 1, -40)
+creditLabel.BackgroundTransparency = 1; creditLabel.TextColor3 = Color3.fromRGB(120, 120, 120); creditLabel.Font = Enum.Font.GothamBold; creditLabel.TextSize = 14
+
+-- CONTAINER
+local container = Instance.new("Frame", contentFrame)
+container.Position = UDim2.fromOffset(235, 15); container.Size = UDim2.new(1, -250, 1, -30); container.BackgroundTransparency = 1
+
+local resizer = Instance.new("TextButton", main)
+resizer.Size = UDim2.fromOffset(30, 30); resizer.Position = UDim2.new(1, -30, 1, -30); resizer.Text = "◢"; resizer.TextColor3 = Color3.fromRGB(85, 170, 255); resizer.BackgroundTransparency = 1; resizer.ZIndex = 10
+
+-- SYSTEMS
+local tabs = {}
+local function createTab(name)
+	local page = Instance.new("ScrollingFrame", container)
+	page.Size = UDim2.fromScale(1, 1); page.BackgroundTransparency = 1; page.Visible = false; page.ScrollBarThickness = 5
+	Instance.new("UIListLayout", page).Padding = UDim.new(0, 15)
+	local btn = Instance.new("TextButton", sidebar)
+	btn.Size = UDim2.new(0.95, 0, 0, 55); btn.Text = name; btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.GothamBold; btn.TextSize = 20; Instance.new("UICorner", btn)
+	btn.MouseButton1Click:Connect(function() for _, v in pairs(tabs) do v.Visible = false end page.Visible = true end)
+	tabs[name] = page; return page
+end
+
+local function addToggle(p, t, c)
+	local b = Instance.new("TextButton", p); b.Size = UDim2.new(1, -10, 0, 65); b.BackgroundColor3 = Color3.fromRGB(25, 25, 25); b.Text = t .. ": OFF"; b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 22; Instance.new("UICorner", b)
+	local a = false; b.MouseButton1Click:Connect(function() a = not a; b.Text = t .. ": " .. (a and "ON" or "OFF"); b.BackgroundColor3 = a and Color3.fromRGB(85, 170, 255) or Color3.fromRGB(25, 25, 25); c(a) end)
+end
+
+local function addButton(p, t, c)
+	local b = Instance.new("TextButton", p); b.Size = UDim2.new(1, -10, 0, 65); b.BackgroundColor3 = Color3.fromRGB(35, 35, 35); b.Text = t; b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold; b.TextSize = 22; Instance.new("UICorner", b); b.MouseButton1Click:Connect(c)
+end
+
+--// CREATE TABS
+local combatT = createTab("⚔️ Combat"); local moveT = createTab("🏃 Movement"); local visualT = createTab("👁️ Visuals"); local physT = createTab("🧪 Physics"); local worldT = createTab("🌎 World"); local servT = createTab("🖥️ Server")
+moveT.Visible = true
+
+--// ATTACH ALL FEATURES
+addToggle(combatT, "Aimbot (RightClick)", function(v) State.Aimbot = v end)
+addToggle(combatT, "Kill Aura", function(v) State.KillAura = v end)
+addToggle(moveT, "Infinite Jump", function(v) State.InfiniteJump = v end)
+addToggle(moveT, "Fly [F]", function(v) State.Fly = v end)
+addToggle(moveT, "Noclip [N]", function(v) State.Noclip = v end)
+local ESPFolder = Instance.new("Folder", workspace); ESPFolder.Name = "BobESP_Final"
+addToggle(visualT, "Advanced ESP", function(v) State.ESP = v; if not v then ESPFolder:ClearAllChildren() end end)
+addToggle(physT, "Spinbot", function(v) State.Spinbot = v end)
+addToggle(physT, "Click TP (Ctrl+Click)", function(v) State.ClickTP = v end)
+addToggle(physT, "Click Delete (Alt+Click)", function(v) State.ClickDelete = v end)
+addToggle(worldT, "Fullbright", function(v) Lighting.Brightness = v and 2 or 1; Lighting.ClockTime = v and 14 or 12; Lighting.GlobalShadows = not v end)
+addButton(servT, "Rejoin Server", function() TeleportService:Teleport(game.PlaceId, player) end)
+addButton(servT, "Server Hop", function()
+	local x = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+	for _, v in pairs(x.data) do if v.playing < v.maxPlayers and v.id ~= game.JobId then TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id) break end end
+end)
+addToggle(servT, "Auto Clicker", function(v) State.AutoClick = v end)
+
+--// MASTER ENGINE
+RunService.RenderStepped:Connect(function()
+	local char = player.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		if State.Fly then
+			local m = Vector3.zero
+			if keys.W then m += camera.CFrame.LookVector end if keys.S then m -= camera.CFrame.LookVector end
+			if keys.A then m -= camera.CFrame.RightVector end if keys.D then m += camera.CFrame.RightVector end
+			hrp.Velocity = m.Unit * State.FlySpeed
+		elseif not State.Fly and hrp.Velocity.Magnitude > 0 and hrp.Velocity.Y == 0 then
+			-- Reset velocity when fly is off to prevent sliding
+		end
+		if State.Noclip then for _, p in pairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end
+		if State.Spinbot then hrp.CFrame *= CFrame.Angles(0, math.rad(25), 0) end
+	end
+	if State.ESP then
+		ESPFolder:ClearAllChildren()
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+				local h = Instance.new("Highlight", ESPFolder); h.Adornee = p.Character; h.FillColor = p.TeamColor.Color
+				local b = Instance.new("BillboardGui", ESPFolder); b.Adornee = p.Character.Head; b.Size = UDim2.fromOffset(100,50); b.AlwaysOnTop = true; b.ExtentsOffset = Vector3.new(0,3,0)
+				local l = Instance.new("TextLabel", b); l.Size = UDim2.fromScale(1,1); l.BackgroundTransparency = 1; l.Text = p.Name.."\nHP: "..math.floor(p.Character.Humanoid.Health); l.TextColor3 = Color3.new(1,1,1); l.Font = Enum.Font.GothamBold; l.TextSize = 14
+			end
+		end
+	end
+	if State.Aimbot and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+		local c = nil; local d = 400
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
+				local m = (camera.CFrame.Position - p.Character.Head.Position).Magnitude
+				if m < d then d = m; c = p end
+			end
+		end
+		if c then camera.CFrame = CFrame.new(camera.CFrame.Position, c.Character.Head.Position) end
+	end
+end)
+
+--// INPUTS & DRAG
+UIS.InputBegan:Connect(function(i, g) if not g then keys[i.KeyCode.Name] = true; if i.KeyCode == Enum.KeyCode.RightShift then main.Visible = not main.Visible end end end)
+UIS.InputEnded:Connect(function(i) keys[i.KeyCode.Name] = false end)
+UIS.JumpRequest:Connect(function() if State.InfiniteJump and player.Character then player.Character.Humanoid:ChangeState(3) end end)
+mouse.Button1Down:Connect(function()
+	if State.ClickTP and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then player.Character.HumanoidRootPart.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0,3,0)) end
+	if State.ClickDelete and UIS:IsKeyDown(Enum.KeyCode.LeftAlt) then if mouse.Target then mouse.Target:Destroy() end end
+end)
+
+local drag, res, start, pos, sSize
+titleBar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = true; start = i.Position; pos = main.Position end end)
+resizer.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then res = true; start = i.Position; sSize = main.Size end end)
+UIS.InputChanged:Connect(function(i)
+	if drag and i.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = i.Position - start; main.Position = UDim2.new(pos.X.Scale, pos.X.Offset + delta.X, pos.Y.Scale, pos.Y.Offset + delta.Y)
+	elseif res and i.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = i.Position - start; main.Size = UDim2.fromOffset(math.max(500, sSize.X.Offset + delta.X), math.max(200, sSize.Y.Offset + delta.Y))
+	end
+end)
+UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then drag = false; res = false end end)
