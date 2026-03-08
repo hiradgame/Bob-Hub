@@ -1,1 +1,1 @@
-yeah just another random kinda broken universal hub.
+yeah just another random universal hub.
